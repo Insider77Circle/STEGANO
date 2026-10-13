@@ -1,0 +1,13 @@
+# STEGANO repo-scanning gate: blocks commits containing invisible
+# Unicode steganography (zero-width chars, tag blocks, bidi controls, ...).
+repos:
+  - repo: local
+    hooks:
+      - id: stegano-scan
+        name: stegano invisible-unicode scan
+        entry: python -m stegano.cli detect --text
+        language: system
+        types: [text]
+        # Fails the commit when the detector finds hidden content.
+        # To scan and print a report instead of failing, run:
+        #   git diff --cached --name-only | xargs -I{} sh -c 'python -m stegano.cli detect --text "$(cat {})"'
