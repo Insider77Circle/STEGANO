@@ -1,0 +1,42 @@
+name: stegano-scan
+
+# Enhancement 7: run the STEGANO detector as a repo-scanning gate on every
+# push and pull request. Fails the workflow if invisible Unicode
+# steganography is found in tracked text files.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install stegano
+        run: pip install -e .
+      - name: Scan tracked files for hidden Unicode
+        run: |
+          python - <<'EOF'
+          import subprocess, sys
+          from stegano.detector import scan
+          files = subprocess.check_output(
+              ["git", "ls-files", "*.py", "*.md", "*.txt", "*.json", "*.yml", "*.yaml"],
+              text=True).split()
+          bad = []
+          for f in files:
+              try:
+                  findings = scan(open(f, encoding="utf-8", errors="replace").read())
+              except OSError:
+                  continue
+              if findings:
+                  bad.append((f, len(findings)))
+          if bad:
+              for f, n in bad:
+                  print(f"BLOCKED: {f} contains {n} invisible/stego characters")
+              sys.exit(1)
+          print(f"OK: scanned {len(files)} files, no hidden Unicode found")
+          EOF
